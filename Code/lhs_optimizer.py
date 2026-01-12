@@ -8,16 +8,11 @@ from scipy.spatial.distance import pdist
 n = 200      # number of design points
 d = 7        # number of variables
 
-# --- GA Configuration Parameters (Based on Paper Section 2.4 and 4.2) ---
-# Population size (must be even). N_pop = 50 is recommended.
+
 POPULATION_SIZE = 50 
-# Mutation probability. P_mut = 0.1 is recommended.
 MUTATION_PROBABILITY = 0.1 
-# Number of generations to check for accumulated improvement (n). 100 is used here.
 GENERATIONS_FOR_CHECK = 10
-# Stopping criterion tolerance (epsilon). 1e-7 is used.
 STOPPING_TOLERANCE = 1e-7 
-# Safety break to prevent infinite loops (arbitrary high value)
 MAX_GENERATIONS = 5000 
 
 sampler = qmc.LatinHypercube(d)
@@ -53,12 +48,6 @@ def evaluate_lhs(L: np.ndarray) -> Dict[str, float]:
     }
 
 def _crossover(best_parent: np.ndarray, current_parent: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Performs the two-child crossover operation (Paper Fig. 1).
-    
-    - Child 1: Best parent with a random column replaced by the column from current_parent.
-    - Child 2: Current parent with a random column replaced by the column from best_parent.
-    """
     p = best_parent.shape[1]
     # Select a random column index to swap
     col_index = random.randint(0, p - 1)
@@ -74,11 +63,6 @@ def _crossover(best_parent: np.ndarray, current_parent: np.ndarray) -> Tuple[np.
     return child1, child2
 
 def _mutate(L: np.ndarray, p_mut: float):
-    """
-    Performs swap mutation on each column of the LHS with probability p_mut.
-    If mutation occurs, two random elements in that column are swapped.
-    (Paper Section 2.3).
-    """
     N, p = L.shape
     for j in range(p):
         # Check if mutation occurs for this column
@@ -88,17 +72,6 @@ def _mutate(L: np.ndarray, p_mut: float):
             L[[idx1, idx2], j] = L[[idx2, idx1], j]
 
 def optimize_lhs_ga(initial_LHS: np.ndarray) -> np.ndarray:
-    """
-    Optimizes a Latin Hypercube Sample (LHS) using a Genetic Algorithm based 
-    on the force criterion (G(L)).
-
-    Args:
-        initial_LHS: The N x p NumPy array (RLH) to start the optimization from. 
-                     It is assumed to be an integer matrix (permutations of 1 to N).
-
-    Returns:
-        The optimized N x p LHS matrix (OLH).
-    """
     N, p = initial_LHS.shape
     num_survivors = POPULATION_SIZE // 2
     
@@ -179,10 +152,6 @@ def optimize_lhs_ga(initial_LHS: np.ndarray) -> np.ndarray:
         
         current_best_lhs = fitness_list[0][1]
         best_lhs_history.append(fitness_list[0][0])
-        
-        # Optional: Print progress
-        # if generation % 100 == 0:
-            #  print(f"Gen {generation:4d}: Best G(L) = {best_lhs_history[-1]:.1f}")
 
     print(f"\n--- Reached Max Generations ({MAX_GENERATIONS}) ---")
     return current_best_lhs.copy()
@@ -228,11 +197,6 @@ def get_lognormal_params(mean, std):
     sigma = np.sqrt(np.log(np.sqrt(1 + (std / mean)**2)))
     mu = np.log(mean) - 0.5 * sigma**2
     return sigma, np.exp(mu)
-
-def lognormal_params(mean, std):
-    mu = np.log((mean**2) / np.sqrt(std**2 + mean**2))
-    sigma_sq = np.log(1 + (std**2) / (mean**2))
-    return np.sqrt(sigma_sq), np.exp(mu)
 
 # Gumbel: mean, std → loc, scale
 def get_gumbel_params(mean, std):
